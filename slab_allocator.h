@@ -10,15 +10,15 @@ typedef enum {
 
 typedef struct SlabAllocator{
   
-  char* buffer;        //contiguous buffer managed by the system
-  int*  free_list;     //list of linked objects
-  int buffer_size;     //size of the buffer in bytes
+  char* buffer;        
+  int*  free_list;     //linked list
+  int buffer_size;     //dimensione del buffer in bytes
 
-  int size;            //number of free blocks
-  int size_max;        //maximum number of blocks
-  int dim_blocco;       //size of a block
+  int size;            //numero di blocchi liberi
+  int size_max;        //numero massimo di blocchi
+  int dim_blocco;       //dimensione di un blocco
   
-  int first_idx;       //pointer to the first bucket
+  int first_idx;       //puntatore al primo bucket
   int bucket_size;     // size of a bucket
 } SlabAllocator;
 
