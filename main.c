@@ -4,6 +4,44 @@
 #include <errno.h>
 #include <string.h>
 
+int getMemoria(char* pid){
+	
+	int memoria = 0;
+	//creo le due stringhe che rappresentano i percorsi dei file
+	char* clear_refs = (char*) malloc(sizeof(pid)+ 10*sizeof(char));
+	char* smaps = (char*) malloc(sizeof(pid)+ 5*sizeof(char));
+	strcat(clear_refs,pid);
+	strcat(clear_refs,"/clear_refs");
+	strcat(smaps,pid);
+	strcat(smaps,"/smaps");
+    
+    errno = 0;
+    
+    FILE *fptr;
+    char c;
+  
+    // Open file
+    fptr = fopen(smaps, "r");
+    if (fptr == NULL)
+    {
+        printf("Cannot open file \n");
+        exit(0);
+    }
+  
+    // Read contents from file
+    c = fgetc(fptr);
+    while (c != EOF)
+    {
+        printf ("%c", c);
+        c = fgetc(fptr);
+    }
+  
+    fclose(fptr);
+    return 0;
+    
+	return memoria;
+}
+
 int main(int argc, char *argv[]){
     DIR *dpproc;
     struct dirent *dirp;
@@ -29,30 +67,38 @@ int main(int argc, char *argv[]){
     while ((dirp = readdir(dpproc)) != NULL){
     	printf("%s\n", dirp->d_name);
     	
-    	struct dirent *dirpmemoria;
-    	DIR *dpmemoria;
+    	//accedo ad ogni directory pid una alla volta
     	
-  	    char* memoria = (char*) malloc(sizeof(proc)+(6*sizeof(char))+sizeof(dirp->d_name));
-  	    strcat(memoria,proc); 
-  	    strcat(memoria,"/");
-  	    printf("%s\n",memoria);
-  	    strcat(memoria,dirp->d_name);
-    	strcat(memoria,"/stat");
+    	struct dirent *dirppid;
+    	DIR *dppid;
     	
-    	if ((dpmemoria = opendir(memoria)) == NULL) {
+    	char* pid = 0;
+  	    pid = (char*) malloc(sizeof(proc)+(6*sizeof(char))+sizeof(dirp->d_name));
+  	    strcat(pid,proc); 
+  	    strcat(pid,"/");
+  	    strcat(pid,dirp->d_name);
+    	
+    	if ((dppid = opendir(pid)) == NULL) {
         	switch (errno) {
         	    case EACCES: printf("Permission denied\n"); break;
         	    case ENOENT: printf("Directory does not exist\n"); break;
-        	    case ENOTDIR: printf("'%s' is not a directory\n", memoria); break;
+        	    case ENOTDIR: printf("'%s' is not a directory\n", pid); break;
         	}
         	exit(EXIT_FAILURE);
     	}
     	
-    	while ((dirpmemoria = readdir(dpmemoria)) != NULL)
-    		printf(" : %s\n", dirpmemoria->d_name);
+    	//ciclo sui file della directory pid
+    	while ((dirppid = readdir(dppid)) != NULL){
+    		printf("%s\n", dirppid->d_name);
+    		if(dirppid->d_name!="clear_refs") continue;
+    		else if (dirppid->d_name=="clear_refs"){
+    			int memoria = getMemoria(pid);
+    		} 
+    		free(pid);
+    	}
     		
     	
-    	if (closedir(dpmemoria) == -1)
+    	if (closedir(dppid) == -1)
         perror("closedir"); 
     }
 
