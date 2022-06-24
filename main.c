@@ -3,21 +3,31 @@
 #include <dirent.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/types.h>
 
+char* creaDirectory(char* proc, struct dirent* dirp){
+	char* pid2 = malloc(strlen(proc));
+  	strcpy(pid2,proc); 
+  	strcat(pid2,"/");
+  	strcat(pid2,dirp->d_name);
+  	return pid2;
+}
+
+//DA COMPLETARE
 int getMemoria(char* pid){
 	
 	int memoria = 0;
 	//creo le due stringhe che rappresentano i percorsi dei file
-	char* clear_refs = (char*) malloc(sizeof(pid)+ 10*sizeof(char));
-	char* smaps = (char*) malloc(sizeof(pid)+ 5*sizeof(char));
-	strcat(clear_refs,pid);
+	char* clear_refs = (char*) malloc(strlen(pid));
+	char* smaps = (char*) malloc(strlen(pid));
+	strcpy(clear_refs,pid);
 	strcat(clear_refs,"/clear_refs");
-	strcat(smaps,pid);
+	strcpy(smaps,pid);
 	strcat(smaps,"/smaps");
     
     errno = 0;
     
-    FILE *fptr;
+    /*FILE *fptr;
     char c;
   
     // Open file
@@ -36,8 +46,7 @@ int getMemoria(char* pid){
         c = fgetc(fptr);
     }
   
-    fclose(fptr);
-    return 0;
+    fclose(fptr);*/
     
 	return memoria;
 }
@@ -65,18 +74,16 @@ int main(int argc, char *argv[]){
     }
     //stampo tutte le directory dei processi con il proprio pid
     while ((dirp = readdir(dpproc)) != NULL){
-    	printf("%s\n", dirp->d_name);
+    	printf("%s", dirp->d_name);
     	
     	//accedo ad ogni directory pid una alla volta
     	
-    	struct dirent *dirppid;
-    	DIR *dppid;
+    	DIR *dppid; 
     	
-    	char* pid = 0;
-  	    pid = (char*) malloc(sizeof(proc)+(6*sizeof(char))+sizeof(dirp->d_name));
-  	    strcat(pid,proc); 
-  	    strcat(pid,"/");
-  	    strcat(pid,dirp->d_name);
+  	    char* pid;
+  	    pid = creaDirectory(proc,dirp);
+    	
+    	errno = 0;
     	
     	if ((dppid = opendir(pid)) == NULL) {
         	switch (errno) {
@@ -87,19 +94,19 @@ int main(int argc, char *argv[]){
         	exit(EXIT_FAILURE);
     	}
     	
-    	//ciclo sui file della directory pid
-    	while ((dirppid = readdir(dppid)) != NULL){
-    		printf("%s\n", dirppid->d_name);
-    		if(dirppid->d_name!="clear_refs") continue;
-    		else if (dirppid->d_name=="clear_refs"){
-    			int memoria = getMemoria(pid);
-    		} 
-    		free(pid);
-    	}
-    		
+    	errno = 0;
     	
+    	
+    	//calcolo la memoria usata da ogni processo
+    	int memoria = getMemoria(pid);
+    	//stampo i valori di memoria e CPU
+    	printf("	Memoria: %d		CPU: %d\n",memoria,0);
+    		
     	if (closedir(dppid) == -1)
-        perror("closedir"); 
+        	perror("closedir");
+        
+        
+        
     }
 
     if (errno != 0) {
@@ -107,8 +114,6 @@ int main(int argc, char *argv[]){
             printf("Invalid directory stream descriptor\n");
         else
             perror("readdir");
-    } else {
-        printf("End-of-directory reached\n");
     }
 
     if (closedir(dpproc) == -1)
