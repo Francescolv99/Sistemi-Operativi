@@ -59,19 +59,11 @@ void calc_cpu_usage_pct(const struct pstat* cur_usage, const struct pstat* last_
     *usage = 1/(float)INTERVAL * pid_diff;
 }
 
-double getCpu(int pid){
-		struct pstat prev,curr;
+double getCpu(int pid, struct pstat prev){
+		struct pstat curr;
 		double cpu;
     	struct tms t;
     	times( &t );
-    	
-    	if( get_usage(pid, &prev) == -1 ) {
-            printf( "error\n" );
-        }
-        
-        sleep(0.5); //se metto a 3 funziona ma è lento, devo trovare un modo per velocizzare
-        //potrei salvare tutti i prev in un array e dopo 3 secondi stampare tutti
-        //così facendo potrei anche stampare i processi in ordine di cpu usata
 
         if( get_usage(pid, &curr) == -1 ) {
             printf( "error\n" );
@@ -126,6 +118,46 @@ int getMemoria(char* pid){
 	return memoria;
 }
 
+int getprocSize(){
+	int size = 0;
+	DIR *dpproc;
+    struct dirent *dirp;
+
+    errno = 0;
+    
+    char* proc = "/proc";
+    if ((dpproc = opendir(proc)) == NULL) {
+        switch (errno) {
+            case EACCES: printf("Permission denied\n"); break;
+            case ENOENT: printf("Directory does not exist\n"); break;
+            case ENOTDIR: printf("'%s' is not a directory\n", proc); break;
+        }
+        exit(EXIT_FAILURE);
+    }
+
+    errno = 0;
+    
+    //scorro nella directory /proc fino al primo processo
+    while ((dirp = readdir(dpproc)) != NULL){
+    	if(strcmp(dirp->d_name,"thread-self")==0) break;
+    }
+    
+    while ((dirp = readdir(dpproc)) != NULL){
+    	size++;
+    }
+    
+    if (errno != 0) {
+        if (errno == EBADF)
+            printf("Invalid directory stream descriptor\n");
+        else
+            perror("readdir");
+    }
+
+    if (closedir(dpproc) == -1)
+        perror("closedir");
+    
+    return size;
+}
 
 int main(int argc, char *argv[]){
 L:
@@ -145,14 +177,22 @@ L:
     }
 
     errno = 0;
+    
+    int procsize = getprocSize();
+    
+    struct pstat* arrayprev = (struct pstat*) malloc(procsize*sizeof(struct pstat));
+    int array_size = 0;
+    int* arraypid = (int*) malloc(procsize*sizeof(int));
+    int pid_size = 0;
+    
+    printf("STAMPO I VALORI DI MEMORIA E CPU DEI PROCESSI NELLA CARTELLA /PROC\n\n");
+    
     //scorro nella directory /proc fino al primo processo
     while ((dirp = readdir(dpproc)) != NULL){
     	if(strcmp(dirp->d_name,"thread-self")==0) break;
     }
     //stampo tutte le directory dei processi con il proprio pid
     while ((dirp = readdir(dpproc)) != NULL){
-    	printf("%s", dirp->d_name);
-    	
     	//accedo ad ogni directory pid una alla volta
     	
     	DIR *dppid; 
@@ -173,22 +213,48 @@ L:
     	
     	errno = 0;
     	
+    	struct pstat prev;
+    	struct tms t;
+    	times( &t );
     	
-    	//calcolo la memoria usata da ogni processo
-    	int memoria = getMemoria(pid);
-    	double cpu = getCpu(atoi(dirp->d_name));
-    	
-    	//stampo i valori di memoria e CPU
-    	printf("	Memoria: %d		%%CPU: %.02f\n",memoria,cpu);
+    	if( get_usage(atoi(dirp->d_name), &prev) == -1 ) {
+            printf( "error\n" );
+        }
+        
+        //inserisco tutti i valori prev e pid dentro all'array 
+        arrayprev[array_size] = prev;
+        array_size++;
+        arraypid[pid_size] = atoi(dirp->d_name);
+        pid_size++;
     		
     	if (closedir(dppid) == -1)
         	perror("closedir");
         	
         free(pid);
         
-        
-        
     }
+    
+    //chiusura cartella proc
+    if (errno != 0) {
+        if (errno == EBADF)
+            printf("Invalid directory stream descriptor\n");
+        else
+            perror("readdir");
+    }
+
+    if (closedir(dpproc) == -1)
+        perror("closedir");
+        
+    //stampa valori memoria e cpu
+    //attendo 3 secondi
+    sleep(3);
+    
+    for(int i = 0; i<array_size;i++){
+    	double cpu = getCpu(arraypid[i],arrayprev[i]);
+    	int memoria = 0;
+    	printf("%d		Memoria: %d		%%CPU: %.02f\n",arraypid[i],memoria,cpu);
+    }
+    
     //gestione dei comandi 
     char* comando = (char*)malloc(4*sizeof(char));
     printf("Inserisci un comando: ");
