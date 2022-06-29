@@ -20,7 +20,6 @@ struct pstat {
 
 int get_usage(const pid_t pid, struct pstat* result) {
 
-    //convert  pid to string
     char pid_s[20];
     snprintf(pid_s, sizeof(pid_s), "%d", pid);
 
@@ -34,8 +33,7 @@ int get_usage(const pid_t pid, struct pstat* result) {
         perror("FOPEN ERROR ");
         return -1;
     }
-
-    //read values from /proc/pid/stat
+    
     bzero(result, sizeof(struct pstat));
     long int rss;
     if (fscanf(fpstat, "%*d %*s %*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu"
@@ -63,7 +61,7 @@ double getCpu(int pid, struct pstat prev){
 		struct pstat curr;
 		double cpu;
     	struct tms t;
-    	times( &t );
+    	times(&t);
 
         if( get_usage(pid, &curr) == -1 ) {
             printf( "error\n" );
@@ -80,41 +78,38 @@ char* creaDirectory(char* proc, struct dirent* dirp){
   	return pid2;
 }
 
-//DA COMPLETARE
-int getMemoria(char* pid){
+double getMemoria(int mypid){
+
+	double memoria=0;
+	FILE *mypidstat = NULL;
+    char filename[100] = {0};
+    snprintf(filename, sizeof(filename), "/proc/%d/statm", mypid);
+    
+    mypidstat = fopen(filename, "r");
+    if (mypidstat == NULL) {
+        fprintf(stderr, "Error: Couldn't open [%s]\n", filename);
+        return -1;
+    }
+
+    int i = 0;
+    int ret = 0;
+    unsigned long long val = 0;
+    char strval1[100] = {0};
+    char strval2[100] = {0};
+
+    // il parametro di interesse si trova alla riga 6
+    for (i = 0; i < 6; i++) {
+        ret = fscanf(mypidstat, "%lld ", &val);
+        if (i == 5) {
+            memoria+=val;
+        }
+    }
+    fclose(mypidstat);
+    //trasformo la memoria da pagine a bytes
+    memoria*=getpagesize();
+    //trasformo la memoria in percentuale
+    memoria= (memoria/4294967296) * 100;
 	
-	int memoria = 0;
-	//creo le due stringhe che rappresentano i percorsi dei file
-	char* clear_refs = (char*) malloc(strlen(pid));
-	char* smaps = (char*) malloc(strlen(pid));
-	strcpy(clear_refs,pid);
-	strcat(clear_refs,"/clear_refs");
-	strcpy(smaps,pid);
-	strcat(smaps,"/smaps");
-    
-    errno = 0;
-    
-    /*FILE *fptr;
-    char c;
-  
-    // Open file
-    fptr = fopen(smaps, "r");
-    if (fptr == NULL)
-    {
-        printf("Cannot open file \n");
-        exit(0);
-    }
-  
-    // Read contents from file
-    c = fgetc(fptr);
-    while (c != EOF)
-    {
-        printf ("%c", c);
-        c = fgetc(fptr);
-    }
-  
-    fclose(fptr);*/
-    
 	return memoria;
 }
 
@@ -247,13 +242,15 @@ L:
         
     //stampa valori memoria e cpu
     //attendo 3 secondi
-    sleep(3);
+    sleep(INTERVAL);
     
     for(int i = 0; i<array_size;i++){
     	double cpu = getCpu(arraypid[i],arrayprev[i]);
-    	int memoria = 0;
-    	printf("%d		Memoria: %d		%%CPU: %.02f\n",arraypid[i],memoria,cpu);
+    	double memoria = getMemoria(arraypid[i]);
+    	printf("%d		%%Memoria: %.02f		%%CPU: %.02f\n",arraypid[i],memoria,cpu);
     }
+    free(arraypid);
+    free(arrayprev);
     
     //gestione dei comandi 
     char* comando = (char*)malloc(4*sizeof(char));
