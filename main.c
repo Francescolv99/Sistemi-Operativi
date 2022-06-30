@@ -19,6 +19,30 @@ struct pstat {
     long unsigned int rss; //Resident  Set  Size in bytes
 };
 
+double getMemoryInfo()
+{
+    FILE *meminfo = fopen("/proc/meminfo", "r");
+    double totalMemory = 0;
+    if(meminfo == NULL)
+    {
+        exit(-1);
+    }
+    char buff[256];
+    while(fgets(buff, sizeof(buff), meminfo))
+    {
+        int ramKB;
+        if(sscanf(buff, "MemTotal: %d kB", &ramKB) == 1)
+        {
+            totalMemory = ramKB*1024.0;
+        }
+    }
+    if(fclose(meminfo) != 0)
+    {
+        exit(-1);
+    }
+    return totalMemory;
+}
+
 int get_usage(const pid_t pid, struct pstat* result) {
 
     char pid_s[20];
@@ -107,7 +131,7 @@ double getMemoria(int mypid){
     //trasformo la memoria da pagine a bytes
     memoria*=getpagesize();
     //trasformo la memoria in percentuale
-    memoria= (memoria/4294967296) * 100;
+    memoria= (memoria/getMemoryInfo()) * 100;
 	
 	return memoria;
 }
@@ -249,7 +273,6 @@ L:
     }
     free(arraypid);
     free(arrayprev);
-    
     printf("\n");
     //gestione dei comandi
     while(1){
