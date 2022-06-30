@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/times.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define INTERVAL 3
 
@@ -60,11 +61,9 @@ void calc_cpu_usage_pct(const struct pstat* cur_usage, const struct pstat* last_
 double getCpu(int pid, struct pstat prev){
 		struct pstat curr;
 		double cpu;
-    	struct tms t;
-    	times(&t);
 
         if( get_usage(pid, &curr) == -1 ) {
-            printf( "error\n" );
+            printf( "errore\n" );
         }
     	calc_cpu_usage_pct(&curr, &prev, &cpu);
     	return cpu;
@@ -87,7 +86,7 @@ double getMemoria(int mypid){
     
     mypidstat = fopen(filename, "r");
     if (mypidstat == NULL) {
-        fprintf(stderr, "Error: Couldn't open [%s]\n", filename);
+        fprintf(stderr, "Errore: Impossibile aprire [%s]\n", filename);
         return -1;
     }
 
@@ -123,9 +122,9 @@ int getprocSize(){
     char* proc = "/proc";
     if ((dpproc = opendir(proc)) == NULL) {
         switch (errno) {
-            case EACCES: printf("Permission denied\n"); break;
-            case ENOENT: printf("Directory does not exist\n"); break;
-            case ENOTDIR: printf("'%s' is not a directory\n", proc); break;
+            case EACCES: printf("Permesso negato\n"); break;
+            case ENOENT: printf("La directory non esiste\n"); break;
+            case ENOTDIR: printf("'%s' non è una directory\n", proc); break;
         }
         exit(EXIT_FAILURE);
     }
@@ -143,7 +142,7 @@ int getprocSize(){
     
     if (errno != 0) {
         if (errno == EBADF)
-            printf("Invalid directory stream descriptor\n");
+            printf("Descrittore della directory non valido\n");
         else
             perror("readdir");
     }
@@ -164,9 +163,9 @@ L:
     char* proc = "/proc";
     if ((dpproc = opendir(proc)) == NULL) {
         switch (errno) {
-            case EACCES: printf("Permission denied\n"); break;
-            case ENOENT: printf("Directory does not exist\n"); break;
-            case ENOTDIR: printf("'%s' is not a directory\n", proc); break;
+            case EACCES: printf("Permesso negato\n"); break;
+            case ENOENT: printf("La directory non esiste\n"); break;
+            case ENOTDIR: printf("'%s' non è una directory\n", proc); break;
         }
         exit(EXIT_FAILURE);
     }
@@ -186,9 +185,8 @@ L:
     while ((dirp = readdir(dpproc)) != NULL){
     	if(strcmp(dirp->d_name,"thread-self")==0) break;
     }
-    //stampo tutte le directory dei processi con il proprio pid
+    //accedo ad ogni directory pid una alla volta
     while ((dirp = readdir(dpproc)) != NULL){
-    	//accedo ad ogni directory pid una alla volta
     	
     	DIR *dppid; 
     	
@@ -199,9 +197,9 @@ L:
     	
     	if ((dppid = opendir(pid)) == NULL) {
         	switch (errno) {
-        	    case EACCES: printf("Permission denied\n"); break;
-        	    case ENOENT: printf("Directory does not exist\n"); break;
-        	    case ENOTDIR: printf("'%s' is not a directory\n", pid); break;
+        	    case EACCES: printf("Permesso negato\n"); break;
+        	    case ENOENT: printf("La directory non esiste\n"); break;
+        	    case ENOTDIR: printf("'%s' non è una directory\n", pid); break;
         	}
         	exit(EXIT_FAILURE);
     	}
@@ -213,7 +211,7 @@ L:
     	times( &t );
     	
     	if( get_usage(atoi(dirp->d_name), &prev) == -1 ) {
-            printf( "error\n" );
+            printf( "errore\n" );
         }
         
         //inserisco tutti i valori prev e pid dentro all'array 
@@ -232,7 +230,7 @@ L:
     //chiusura cartella proc
     if (errno != 0) {
         if (errno == EBADF)
-            printf("Invalid directory stream descriptor\n");
+            printf("Descrittore della directory non valido\n");
         else
             perror("readdir");
     }
@@ -252,27 +250,83 @@ L:
     free(arraypid);
     free(arrayprev);
     
-    //gestione dei comandi 
-    char* comando = (char*)malloc(4*sizeof(char));
-    printf("Inserisci un comando: ");
-    scanf("%s",comando);
-    
-    //aggiornamento dei processi
-    if(strcmp(comando,"u\n")){ //funziona con qualsiasi lettera metto, devo cambiare
-    printf("\nAGGIORNO I PROCESSI\n");
-    	goto L;
+    printf("\n");
+    //gestione dei comandi
+    while(1){
+    	char* comando = (char*)malloc(10*sizeof(char));
+    	int x;
+    	printf("Inserisci un comando: ");
+    	scanf("%s",comando);
+    	if(strcmp(comando,"update")==0){
+    		printf("\nAGGIORNO I PROCESSI\n");
+    		free(comando);
+    		goto L;
+    	}
+    	else if(strcmp(comando,"h")==0){
+    		printf("\nupdate - aggiorna i processi\nterminate - termina il processo inserito da input\nkill - uccide il processo inserito da input\nsuspend - sospende il processo inserito da input\nresume - riattiva il processo inserito da input\n\n");
+    		free(comando);
+    	}
+    	else if(strcmp(comando,"q")==0){
+    		printf("TERMINO IL PROGRAMMA...\n");
+    		free(comando);
+    		break;
+    	}
+    	else if(strcmp(comando,"terminate")==0){
+    		int ret;
+    		printf("Inserisci il numero del processo da terminare: ");
+    		scanf("%d",&x);
+    		ret = kill(x, SIGTERM);
+    		if(ret==-1){ 
+    			printf("il processo %d non esiste, è già stato terminato o non può essere terminato\n\n",x);
+    			free(comando);
+    			continue;
+    		}
+    		free(comando);
+    		printf("il processo %d è stato terminato\n\n",x);
+    	}
+    	else if(strcmp(comando,"kill")==0){
+    		int ret;
+    		printf("Inserisci il numero del processo da interrompere: ");
+    		scanf("%d",&x);
+    		ret = kill(x, SIGKILL);
+    		if(ret==-1){ 
+    			printf("il processo %d non esiste, è già stato interrotto o non può essere interrotto\n\n",x);
+    			free(comando);
+    			continue;
+    		}
+    		free(comando);
+    		printf("il processo %d è stato interrotto\n\n",x);
+    	}
+    	else if(strcmp(comando,"suspend")==0){
+    		int ret;
+    		printf("Inserisci il numero del processo da sospendere: ");
+    		scanf("%d",&x);
+    		ret = kill(x, SIGSTOP);
+    		if(ret==-1){ 
+    			printf("il processo %d non esiste, è già stato sospeso o non può essere sospeso\n\n",x);
+    			free(comando);
+    			continue;
+    		}
+    		free(comando);
+    		printf("il processo %d è stato sospeso\n\n",x);
+    	}
+    	else if(strcmp(comando,"resume")==0){
+    		int ret;
+    		printf("Inserisci il numero del processo da riprendere: ");
+    		scanf("%d",&x);
+    		ret = kill(x, SIGCONT);
+    		if(ret==-1){ 
+    			printf("il processo %d non esiste, è già stato ripreso o non può essere ripreso\n\n",x);
+    			free(comando);
+    			continue;
+    		}
+    		printf("il processo %d è stato ripreso\n\n",x);
+    		free(comando);
+    	}
+    	else{
+    		printf("comando non riconosciuto, premi 'h' per visualizzare i comandi disponibili\n");
+    		free(comando);
+    	}
     }
-
-	//chiusura cartella proc
-    if (errno != 0) {
-        if (errno == EBADF)
-            printf("Invalid directory stream descriptor\n");
-        else
-            perror("readdir");
-    }
-
-    if (closedir(dpproc) == -1)
-        perror("closedir");
-
     exit(EXIT_SUCCESS);
 }
