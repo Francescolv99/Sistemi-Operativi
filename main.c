@@ -55,7 +55,6 @@ int get_usage(const pid_t pid, struct pstat* result) {
 
     FILE *fpstat = fopen(stat_filepath, "r");
     if (fpstat == NULL) {
-        perror("FOPEN ERROR ");
         return -1;
     }
     
@@ -87,7 +86,7 @@ double getCpu(int pid, struct pstat prev){
 		double cpu;
 
         if( get_usage(pid, &curr) == -1 ) {
-            printf( "errore\n" );
+            return 0;
         }
     	calc_cpu_usage_pct(&curr, &prev, &cpu);
     	return cpu;
@@ -110,8 +109,7 @@ double getMemoria(int mypid){
     
     mypidstat = fopen(filename, "r");
     if (mypidstat == NULL) {
-        fprintf(stderr, "Errore: Impossibile aprire [%s]\n", filename);
-        return -1;
+        return memoria;
     }
 
     int i = 0;
@@ -269,7 +267,7 @@ L:
     for(int i = 0; i<array_size;i++){
     	double cpu = getCpu(arraypid[i],arrayprev[i]);
     	double memoria = getMemoria(arraypid[i]);
-    	printf("%d		%%Memoria: %.02f		%%CPU: %.02f\n",arraypid[i],memoria,cpu);
+    	printf("%d		%%Memoria: %.01f		%%CPU: %.01f\n",arraypid[i],memoria,cpu);
     }
     free(arraypid);
     free(arrayprev);
